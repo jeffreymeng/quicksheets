@@ -65,7 +65,7 @@ def lex(str):
     while pos < len(str):
         c = str[pos]
 
-        if c in "()":
+        if c in "(),":
             yield Token("control", c, pos, pos + 1)
             pos += 1
             continue
@@ -86,8 +86,8 @@ def lex(str):
 
             if row1 != "":
                 if str[nextStartPos] != ":":
-                    yield Token("range", (col1, row1, col1, row1), pos, endPosition)
-                    pos = nextStartPos + 1
+                    yield Token("range", (col1, int(row1), col1, int(row1)), pos, nextStartPos - 1)
+                    pos = nextStartPos
                     continue
                 else:
                     nextStartPos += 1
@@ -101,8 +101,8 @@ def lex(str):
                         col2 = col1
                     if row2 == "":
                         row2 = row1
-                    yield Token("range", (col1, row1, col2, row2), pos, endPosition)
-                    pos = nextStartPos + 1
+                    yield Token("range", (col1, int(row1), col2, int(row2)), pos, nextStartPos - 1)
+                    pos = nextStartPos
                     continue
         # strings
         if c in "\'\"":
@@ -151,12 +151,67 @@ def pad(str, toLength, withCharacter, direction = "right"):
         return str + withCharacter * (toLength - len(str))
     else:
         return withCharacter * (toLength - len(str)) + str
-
-
-def testLexer():
-    for token in lex("128 + SUM(A1:B2) - 2 * 7 / VALUE('72')"):
+def printLexResult(tokens):
+    for token in tokens:
         print(f'{pad(token.type, 10, " ")} {pad(str(token.startPosition), 2, "0", "left")}' +
               f':{pad(str(token.endPosition), 2, "0", "left")} {repr(token.symbol)}')
+
+def testLexer():
+    def test(res, expected):
+        for i in range(len(res)):
+            expType, expSymbol = expected[i]
+            if res[i].type != expType or res[i].symbol != expSymbol:
+                raise Exception(f'{i}: Expected Token<{expType}>({repr(expSymbol)}) but ' +
+                                f'got {repr(res[i])}')
+    print("Testing lex()...", end="")
+    test1Res = list(lex("1 + 1"))
+    test1Expected = [("number", 1), ("operator", "+"), ("number", 1)]
+    test(test1Res, test1Expected)
+    test2Res = list(lex("9385 + (COUNT(A2, ZZ1:AB5324) ^ 2) + DAY('monday')"))
+    test2ResNoWhitespace = list(lex("9385+(COUNT(A2,ZZ1:AB5324)^2)+DAY('monday')"))
+    test2ResWeirdWhitespace = list(lex("9385   +(COUNT\t(A2,ZZ1:AB5324\t\t\t\t)^2)+ DAY('monday')"))
+    test2Expected = [
+        ("number", 9385),
+        ("operator", "+"),
+        ("control", "("),
+        ("function", "COUNT"),
+        ("control", "("),
+        ("range", ("A", 2, "A", 2)),
+        ("control", ","),
+        ("range", ("ZZ", 1, "AB", 5324)),
+        ("control", ")"),
+        ("operator", "^"),
+        ("number", 2),
+        ("control", ")"),
+        ("operator", "+"),
+        ("function", "DAY"),
+        ("control", "("),
+        ("string", "monday"),
+        ("control", ")")
+    ]
+    test(test2Res, test2Expected)
+    test(test2ResNoWhitespace, test2Expected)
+    test(test2ResWeirdWhitespace, test2Expected)
+    test3Res = list(lex("128 + SUM(A1:B2) - 2 * 7 / VALUE('72')"))
+    test3ResNoWhitespace = list(lex("128+SUM(A1:B2)-2*7/VALUE('72')"))
+    test3Expected = [("number", 128),
+                     ("operator", "+"),
+                     ("function", "SUM"),
+                     ("control", "("),
+                     ("range", ("A", 1, "B", 2)),
+                     ("control", ")"),
+                     ("operator", "-"),
+                     ("number", 2),
+                     ("operator", "*"),
+                     ("number", 7),
+                     ("operator", "/"),
+                     ("function", "VALUE"),
+                     ("control", "("),
+                     ("string", "72"),
+                     ("control", ")")]
+    test(test3Res, test3Expected)
+    test(test3ResNoWhitespace, test3Expected)
+    print("Passed!")
 
 if (__name__ == '__main__'):
     testLexer()

@@ -13,6 +13,41 @@ My project will compose of three major parts:
     which cells need to have their value recomputed.
 3. Formulas, which is in charge of parsing spreadsheet formulas and computing
 
+Here are the detailed plans for each part:
+Graphics
+- takes in a Spreadsheet and renders it
+
+Spreadsheet
+- class Spreadsheet
+    - init with path to csv file, or no path
+    - holds Cells
+- class Cell
+    - holds the contents of a cell
+    - string or number variable _computedValue: the value of the cell, which is the
+        computed result of a formula if one exists. Otherwise, it's identical to _rawValue
+    - string _rawValue: what the user typed in. This can be a formula.
+    - function getComputedValue(): get the computed value of this cell
+    - function getRawValue(): get the raw value of the cell
+    - function setRawValue(): update the value of this cell. If it's updated with
+        a formula, or a formula is updated, the cell will update the values of
+        all cells that depend on this cell's value
+    - function update(blacklist): re-computes the rawValue of the cell based on its
+        dependencies, and updates all its dependents. This function should
+        only be called by other cells. `blacklist` is an optional array
+        of cells that cannot be updated again (because they've already been
+        updated this cycle). If the cell requires another update, this
+        will trigger a circular dependency error.
+    - array of cells dependencies: reference to all Cells that this cell's
+        formula references, or [] if it does not have a formula
+    - array of cells dependents: reference to all Cells that rely on the
+        computed value of this cell.
+Formulas
+- File: formula/lexer.py (in charge of taking a raw string and splitting it into tokens)
+  - class Token
+  - function lex(str) (generator that reads in a string containing a formula and yields Tokens)
+  - function testLexer() (tests the lexer)
+  - function printLexResult() prints the output from lex(str) for easy analysis
+
 Algorithmic Plan
 ===================
 I believe the most complex part of my project will be parsing and evaluating formulas,
@@ -30,3 +65,13 @@ The second step, parsing, will read in the resulting tokens from lexing and
 Version Control Plan
 ====================
 I plan to back up my code using GitHub. See the image version-control.png.
+
+
+### Scrolling
+There will be a draggable scrollbar on the right and bottom, when necessary.
+The scrollbar can be scrolled in very small (1px) increments, however
+only when the scrollbar passes a certain threshold does the sheet actually scroll.
+When the sheet scrolls, all cells will be essentially shifted by some number
+of cells, such that cells are never cut off by the scroll. They are either
+completely shown or completely hidden. This is how it works in google sheets
+and excel too, I believe.
