@@ -1,0 +1,32 @@
+Project Description
+===================
+The name of my term project is quicksheets. It's a spreadsheet application that
+can handle reading & editing CSV files, as well as spreadsheet formulas. The app
+will support a variety of formulas, and will have a pleasant formula editing
+experience, including syntax highlighting.
+
+Structural Plan
+===================
+My project will compose of three major parts:
+1. Graphics, which is in charge of rendering the spreadsheet and handling input
+2. Spreadsheet, which is in charge of storing the spreadsheet data and determining
+    which cells need to have their value recomputed.
+3. Formulas, which is in charge of parsing spreadsheet formulas and computing
+
+Algorithmic Plan
+===================
+I believe the most complex part of my project will be parsing and evaluating formulas,
+and also determining which cells need to be updated as a result of editing a cell.
+
+1. Parsing & Evaluating Formulas
+I plan to handle parsing and evaluating formulas in a few steps.
+The first step, lexing, will consist of reading in the formula and splitting
+it into its component tokens. For example, "3 * (8 + SUM(A1:B4))" would be split
+into a list of tokens: number 3, operator *, control character (, number 8,
+operator +, formula SUM, control character (, range col1 A row1 1 col2 B row2 4,
+control character ), and control character )
+The second step, parsing, will read in the resulting tokens from lexing and
+
+Version Control Plan
+====================
+I plan to back up my code using GitHub. See the image version-control.png.

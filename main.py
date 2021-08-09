@@ -1,7 +1,14 @@
-
-
 from cmu_112_graphics import *
-import string, math
+
+"""
+TODOS: (top first)
+- Add labels / headers for rows and cols
+- Parse formulas
+- organize code
+- Edit textbox?
+=== TP1 Goal ===
+
+"""
 
 
 class Cell(object):
@@ -46,7 +53,10 @@ def mousePressed(app, event):
     row, col = getCell(app, event.x, event.y)
     if row == -1 or col == -1:
         return
-    app.data[row][col] = Cell(app.getUserInput("Enter new cell value:"))
+    newValue = app.getUserInput("Enter new cell value:")
+    if newValue == None:
+        return
+    app.data[row][col] = Cell(newValue)
 
 def keyPressed(app, event):
     pass
