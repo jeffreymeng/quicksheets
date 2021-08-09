@@ -1,5 +1,22 @@
 import string
 
+class Range(object):
+    def __init__(self, col1, row1, col2, row2):
+        self.col1 = col1
+        self.row1 = row1
+        self.col2 = col2
+        self.row2 = row2
+    
+    def __repr__(self):
+        return f'Range({self.col1}{self.row1}:{self.col2}{self.row2})'
+
+    def __eq__(self, other):
+        return isinstance(other, Range) \
+            and self.col1 == other.col1 and self.row1 == other.row1 \
+            and self.col2 == other.col2 and self.row2 == other.row2
+
+
+
 
 class Token(object):
     types = ["number", "operator", "function", "control", "range", "string"]
@@ -16,10 +33,7 @@ class Token(object):
                and self.pos == other.pos and self.symbol == other.symbol
 
     def __repr__(self):
-        symbol = self.symbol
-        if self.type == "range":
-            symbol = f'{symbol[0]}{symbol[1]}:{symbol[2]}{symbol[3]}'
-        return f'Token<{self.type}>({repr(symbol)})'
+        return f'Token<{self.type}>({repr(self.symbol)})'
 
 
 # expected lexer output (not including position)
@@ -39,15 +53,16 @@ class Token(object):
 # Token("string", "7"),
 # Token("control", ")")
 
-# returns the longest prefix of str containing only characters in the string whitelistedCharacters
-def whitelistedPrefix(str, whitelistedCharacters):
-    return prefixWhile(str, lambda c: c in whitelistedCharacters)
+# returns the longest prefix of string s containing only characters in the string whitelistedCharacters
+def whitelistedPrefix(s, whitelistedCharacters):
+    return prefixWhile(s, lambda c: c in whitelistedCharacters)
 
-# returns the longest prefix of the string containing only characters passing
+
+# returns the longest prefix of the string s containing only characters passing
 # a predicate function
-def prefixWhile(str, predicate):
+def prefixWhile(s, predicate):
     buffer = ""
-    for c in str:
+    for c in s:
         if predicate(c):
             buffer += c
         else:
@@ -58,7 +73,7 @@ def prefixWhile(str, predicate):
 # Some resources I looked at:
 # https://stackoverflow.com/questions/37346934/designing-a-language-lexer
 # https://medium.com/young-coder/how-i-wrote-a-lexer-39f4f79d2980
-#
+# https://ruslanspivak.com/lsbasi-part1/
 def lex(str):
 
     pos = 0
@@ -68,6 +83,16 @@ def lex(str):
         if c in "(),":
             yield Token("control", c, pos, pos + 1)
             pos += 1
+            continue
+
+        if c in string.digits:
+
+            buffer = whitelistedPrefix(str[pos:], string.digits)
+            endPosition = pos - 1 + len(buffer)
+            yield Token("number", int(buffer), pos, endPosition)
+
+            # set the position to the character after the number
+            pos = endPosition + 1
             continue
 
         # Operators
@@ -86,7 +111,7 @@ def lex(str):
 
             if row1 != "":
                 if str[nextStartPos] != ":":
-                    yield Token("range", (col1, int(row1), col1, int(row1)), pos, nextStartPos - 1)
+                    yield Token("range", Range(col1, int(row1), col1, int(row1)), pos, nextStartPos - 1)
                     pos = nextStartPos
                     continue
                 else:
@@ -101,7 +126,7 @@ def lex(str):
                         col2 = col1
                     if row2 == "":
                         row2 = row1
-                    yield Token("range", (col1, int(row1), col2, int(row2)), pos, nextStartPos - 1)
+                    yield Token("range", Range(col1, int(row1), col2, int(row2)), pos, nextStartPos - 1)
                     pos = nextStartPos
                     continue
         # strings
@@ -120,14 +145,6 @@ def lex(str):
             pos = endPosition + 1
             continue
 
-        if c in string.digits:
-            buffer = whitelistedPrefix(str[pos:], string.digits)
-            endPosition = pos - 1 + len(buffer)
-            yield Token("number", int(buffer), pos, endPosition)
-
-            # set the position to the character after the number
-            pos = endPosition + 1
-            continue
 
         if c in "_" + string.ascii_letters:
             buffer = whitelistedPrefix(str[pos:], "_" + string.ascii_letters)
@@ -151,11 +168,14 @@ def pad(str, toLength, withCharacter, direction = "right"):
         return str + withCharacter * (toLength - len(str))
     else:
         return withCharacter * (toLength - len(str)) + str
+
+# Prints the result of lex(someString) in a formatted way
 def printLexResult(tokens):
     for token in tokens:
         print(f'{pad(token.type, 10, " ")} {pad(str(token.startPosition), 2, "0", "left")}' +
               f':{pad(str(token.endPosition), 2, "0", "left")} {repr(token.symbol)}')
 
+# tests the lexer
 def testLexer():
     def test(res, expected):
         for i in range(len(res)):
@@ -163,22 +183,25 @@ def testLexer():
             if res[i].type != expType or res[i].symbol != expSymbol:
                 raise Exception(f'{i}: Expected Token<{expType}>({repr(expSymbol)}) but ' +
                                 f'got {repr(res[i])}')
+        if len(res) != len(expected):
+            raise Exception(f'Expected number of tokens to be {len(expected)}, but got {len(res)} tokens')
     print("Testing lex()...", end="")
-    test1Res = list(lex("1 + 1"))
-    test1Expected = [("number", 1), ("operator", "+"), ("number", 1)]
+    test1Res = list(lex("1 + 1 + -5"))
+    test1Expected = [("number", 1), ("operator", "+"), ("number", 1),
+                     ("operator", "+"), ("operator", "-"), ("number", 5)]
     test(test1Res, test1Expected)
     test2Res = list(lex("9385 + (COUNT(A2, ZZ1:AB5324) ^ 2) + DAY('monday')"))
     test2ResNoWhitespace = list(lex("9385+(COUNT(A2,ZZ1:AB5324)^2)+DAY('monday')"))
-    test2ResWeirdWhitespace = list(lex("9385   +(COUNT\t(A2,ZZ1:AB5324\t\t\t\t)^2)+ DAY('monday')"))
+    test2ResWeirdWhitespace = list(lex("9385   +(COUNT\t(A2 ,ZZ1:AB5324\t\t\t\t)^2)+ DAY('monday')"))
     test2Expected = [
         ("number", 9385),
         ("operator", "+"),
         ("control", "("),
         ("function", "COUNT"),
         ("control", "("),
-        ("range", ("A", 2, "A", 2)),
+        ("range", Range("A", 2, "A", 2)),
         ("control", ","),
-        ("range", ("ZZ", 1, "AB", 5324)),
+        ("range", Range("ZZ", 1, "AB", 5324)),
         ("control", ")"),
         ("operator", "^"),
         ("number", 2),
@@ -198,7 +221,7 @@ def testLexer():
                      ("operator", "+"),
                      ("function", "SUM"),
                      ("control", "("),
-                     ("range", ("A", 1, "B", 2)),
+                     ("range", Range("A", 1, "B", 2)),
                      ("control", ")"),
                      ("operator", "-"),
                      ("number", 2),
