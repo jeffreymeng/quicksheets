@@ -1,92 +1,6 @@
-from lexer import lex, LexerError
-from formulas import runFunction, FormulaNameError
-
-class ASTNode(object):
-    def __init__(self, token):
-        self.token = token
-
-    def eval(self):
-        raise Exception("Eval was not overwritten by a subclass")
-
-    def __repr__(self):
-        print(f'<Node: {repr(self.token)}>')
-
-class NumberNode(ASTNode):
-    def __init__(self, token):
-        assert(token.type == "number")
-        super().__init__(token)
-
-    def eval(self):
-        return self.token.symbol
-
-class StringNode(ASTNode):
-    def __init__(self, token):
-        assert(token.type == "string")
-        super().__init__(token)
-
-    def eval(self):
-        return self.token.symbol
-
-class UnaryPlusNode(ASTNode):
-    def __init__(self, left, token):
-        self.left = left
-        super().__init__(token)
-    def eval(self):
-        return self.left.eval()
-
-class UnaryMinusNode(ASTNode):
-    def __init__(self, left, token):
-        self.left = left
-        super().__init__(token)
-    def eval(self):
-        return -1 * self.left.eval()
-
-class BinaryOpNode(ASTNode):
-    def __init__(self, left, token, right):
-        self.left = left
-        self.right = right
-        super().__init__(token)
-
-class ExponentNode(BinaryOpNode):
-    def eval(self):
-        return self.left.eval() ** self.right.eval()
-
-class AddNode(BinaryOpNode):
-    def eval(self):
-        return self.left.eval() + self.right.eval()
-
-class SubtractNode(BinaryOpNode):
-    def eval(self):
-        return self.left.eval() - self.right.eval()
-
-class MultiplyNode(BinaryOpNode):
-    def eval(self):
-        return self.left.eval() * self.right.eval()
-
-class DivideNode(BinaryOpNode):
-    def eval(self):
-        return self.left.eval() / self.right.eval()
-
-class RangeNode(ASTNode):
-    def __init__(self, token, spreadsheet):
-        super().__init__(token)
-        self.spreadsheet = spreadsheet
-
-    def eval(self):
-        return self.spreadsheet.get(self.token.symbol)
-
-class FunctionCallNode(ASTNode):
-    def __init__(self, token, arguments):
-        assert(token.type == "function")
-        super().__init__(token)
-        self.arguments = arguments
-
-    def eval(self):
-        evaluatedArguments = []
-        for arg in self.arguments:
-            evaluatedArguments.append(arg.eval())
-        return runFunction(self.token, evaluatedArguments)
-
+from formula.lexer import lex, LexerError
+from formula.formulas import FormulaNameError
+from formula.nodes import *
 
 class ParserSyntaxError(Exception):
     def __init__(self, msg, token = None):
@@ -215,7 +129,13 @@ class Parser(object):
             return ExponentNode(leftNode, operator, rightNode)
         return leftNode
 
-    # <base> ::= "(" <expression> ")" | <number> | <function> | <range> | "+" <base> | "-" <base>
+    def getParameter(self):
+        if self.hasNextToken() and self.peek().type == "range":
+            return RangeNode(self.next("range"), self.spreadsheet)
+        else:
+            return self.getExpression()
+
+    # <base> ::= "(" <expression> ")" | <number> | <function> | <reference> | "+" <base> | "-" <base>
     def getBase(self):
         if self.hasNextToken() and self.peek().matches("operator", "+"):
             operatorToken = self.next("operator", "+")
@@ -228,10 +148,10 @@ class Parser(object):
             self.next("control", "(")
             arguments = []
             if not self.peek().matches("control", ")"):
-                arguments.append(self.getExpression())
+                arguments.append(self.getParameter())
                 while not self.peek().matches("control", ")"):
                     self.next("control", ",")
-                    arguments.append(self.getExpression())
+                    arguments.append(self.getParameter())
             self.next("control", ")")
             return FunctionCallNode(functionToken, arguments)
         elif self.tryNext("control", "("):
@@ -242,10 +162,10 @@ class Parser(object):
             return StringNode(self.next("string"))
         elif self.peek().type == "number":
             return NumberNode(self.next("number"))
-        elif self.peek().type == "range":
+        elif self.peek().type == "reference":
             if self.spreadsheet == None:
-                raise SpreadsheetReferenceError("ReferenceError: ranges are not accessible in the REPL", self.next("range"))
-            return RangeNode(self.next("range"), self.spreadsheet)
+                raise SpreadsheetReferenceError("ReferenceError: references are not accessible in the REPL", self.next("reference"))
+            return RefNode(self.next("reference"), self.spreadsheet)
         else:
             invalidToken = self.next()
             raise ParserSyntaxError(f'Unexpected token {repr(invalidToken.symbol)} ' +

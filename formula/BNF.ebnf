@@ -14,7 +14,8 @@ expression      ::= term | term "+" expression | term "-" expression ;
 term            ::= factor | factor "*" term | factor "/" term ;
 factor          ::= base | base "^" exponent ;
 function_name   ::= letter | letter function_name
-function        ::= function_name "(" [ { expression "," } expression ] ")"
+function_arg    ::= range | expression
+function        ::= function_name "(" [ { function_arg "," } function_arg ] ")"
 
-base            ::= "(" expression ")" | number | function | "+" base | "-" base ;
+base            ::= "(" expression ")" | number | function | reference | "+" base | "-" base ;
 exponent        ::= base ;

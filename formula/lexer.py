@@ -1,28 +1,11 @@
 import string
-
-
-class Range(object):
-    def __init__(self, col1, row1, col2, row2):
-        self.col1 = col1
-        self.row1 = row1
-        self.col2 = col2
-        self.row2 = row2
-    
-    def __repr__(self):
-        return f'Range({self.col1}{self.row1}:{self.col2}{self.row2})'
-
-    def __eq__(self, other):
-        return isinstance(other, Range) \
-            and self.col1 == other.col1 and self.row1 == other.row1 \
-            and self.col2 == other.col2 and self.row2 == other.row2
-
-
+from spreadsheet.range import Range, Reference
 
 class Token(object):
-    types = ["number", "operator", "function", "control", "range", "string"]
+    types = ["number", "operator", "function", "control", "range", "string", "reference"]
     def __init__(self, type, symbol, startPosition, endPosition):
         if type not in Token.types:
-            raise Exception("Unknown Token " + type)
+            raise Exception("Unknown Token type: " + type)
         self.type = type
         self.startPosition = startPosition
         self.endPosition = endPosition
@@ -111,7 +94,7 @@ def lex(str):
             continue
 
         # Operators
-        if c in "+-*/%^":
+        if c in "+-*/^":
             yield Token("operator", c, pos, pos + 1)
             pos += 1
             continue
@@ -126,7 +109,7 @@ def lex(str):
 
             if row1 != "":
                 if nextStartPos >= len(str) or str[nextStartPos] != ":":
-                    yield Token("range", Range(col1, int(row1), col1, int(row1)), pos, nextStartPos - 1)
+                    yield Token("reference", Reference(col1, int(row1)), pos, nextStartPos - 1)
                     pos = nextStartPos
                     continue
                 else:
@@ -138,10 +121,10 @@ def lex(str):
                     if col2 == row2 == "":
                         raise LexerError("Expected reference after ':'", nextStartPos - 1)
                     if col2 == "":
-                        col2 = col1
+                        col2 = -1
                     if row2 == "":
-                        row2 = row1
-                    yield Token("range", Range(col1, int(row1), col2, int(row2)), pos, nextStartPos - 1)
+                        row2 = -1
+                    yield Token("range", Range(Reference(col1, int(row1)), Reference(col2, int(row2))), pos, nextStartPos - 1)
                     pos = nextStartPos
                     continue
         # strings
@@ -214,9 +197,9 @@ def testLexer():
         ("control", "("),
         ("function", "COUNT"),
         ("control", "("),
-        ("range", Range("A", 2, "A", 2)),
+        ("reference", Reference("A2")),
         ("control", ","),
-        ("range", Range("ZZ", 1, "AB", 5324)),
+        ("range", Range(Reference("ZZ1"), Reference("AB5324"))),
         ("control", ")"),
         ("operator", "^"),
         ("number", 2),
@@ -236,7 +219,7 @@ def testLexer():
                      ("operator", "+"),
                      ("function", "SUM"),
                      ("control", "("),
-                     ("range", Range("A", 1, "B", 2)),
+                     ("range", Range(Reference("A1"), Reference("B2"))),
                      ("control", ")"),
                      ("operator", "-"),
                      ("number", 2),
@@ -250,6 +233,13 @@ def testLexer():
     test(test3Res, test3Expected)
     test(test3ResNoWhitespace, test3Expected)
     print("Passed!")
+
+def getReferences(lexer):
+    res = []
+    for token in lexer:
+        if token.type == "range" or token.type == "reference":
+            res.append(token)
+    return res
 
 if (__name__ == '__main__'):
     testLexer()

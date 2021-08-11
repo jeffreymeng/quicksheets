@@ -1,3 +1,42 @@
+TP2 Update
+==================
+The main update I have is a change in the parsing algorithm. The algorithm
+is still mostly the same as described before, but I've added substantially
+more detail below: My parser uses a recursive descent algorithm. The recursive descent parser
+uses a set of functions, each representing a part of my spreadsheet language's
+grammar.
+
+In BNF form, my formula language's grammar roughly matches this:
+```
+expression      ::= term | term "+" expression | term "-" expression ;
+term            ::= factor | factor "*" term | factor "/" term ;
+factor          ::= base | base "^" exponent ;
+function_arg    ::= range | expression
+function        ::= function_name "(" [ { function_arg "," } function_arg ] ")"
+
+base            ::= "(" expression ")" | number | function | string | reference | "+" base | "-" base ;
+exponent        ::= base ;
+```
+function_name, number, function, string, and reference correspond to tokens from my lexer.
+
+Other than that, each of the symbols (`expression`, `term`, `factor`, etc) is a function
+in the recursive descent parser, although the functions may be named `getExpression()`, `getTerm()`, etc.
+
+The expression gets a term, and then looks at the next token. If it's a plus or minus
+operator, it adds a add/subtract node to the tree with the term as the left and the
+next term as the right.
+
+In order to get a term, however, the parser must get a factor, and then check if the next
+token is multiple/divide and perform the correct operation just as with add/subtract.
+
+In order to get a factor, the parser must get a base, and then check if the next token
+is an exponentiation operator. In this way, before the tree gets to an add operator, it
+will have handled all operators of higher precedence.
+
+A base is typically just the next token, a number, string, or reference, although it can also be
+a parenthesized expression (which then recursively goes back down to get a base inside the parentheses)
+or a unary operator followed by a base.
+
 Project Description
 ===================
 The name of my term project is quicksheets. It's a spreadsheet application that

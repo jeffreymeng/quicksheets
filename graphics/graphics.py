@@ -1,21 +1,18 @@
 from cmu_112_graphics import *
-from spreadsheet.cell import Cell
+from spreadsheet.spreadsheet import Spreadsheet
+from spreadsheet.range import Reference
 
-
-def parseCSV(text):
-    arr = []
-    for line in text.splitlines():
-        cells = line.split(",")
-        for i in range(len(cells)):
-            cells[i] = Cell(cells[i])
-        arr.append(cells)
-
-    return arr
+"""
+TODO: 
+Dragging
+Copy/Paste? and change cells
+undo/redo?
+"""
 
 def initCellDimensions(app):
     rows, cols, margin = app.rows, app.cols, app.margin
     headerHeight = 20
-    headerWidth = 10
+    headerWidth = 25
     app.rowHeights = [headerHeight] + [(app.height - 2 * margin - headerHeight) // rows] * rows
     app.colWidths = [headerWidth] + [(app.width - 2 * margin - headerWidth) // cols] * cols
 
@@ -25,22 +22,19 @@ def appStarted(app):
     app.cols = 10
     app.margin = 10
     initCellDimensions(app)
-    testData = parseCSV("""
-one,,three,,5,6,7
-3,5,71,4
-hello,goodbye,,
-    """)
 
-    for i in range(app.rows - len(testData)):
-        testData.append([])
-
-    for row in testData:
-        for i in range(app.cols - len(row)):
-            row.append(Cell(""))
-
-    app.data = testData
-    print(testData)
-
+#     app.spreadsheet = Spreadsheet(app.rows, app.cols, """
+# one,,three,,5,6,7
+# 3,5,71,4
+# hello,goodbye,,
+#     """)
+    app.spreadsheet = Spreadsheet(app.rows, app.cols,
+"""1,2,3,4,5
+2,4,6,8,10
+3,6,9,12,15
+4,8,12,16,20
+5,10,15,20,25
+""" )
 def sizeChanged(app):
     initCellDimensions(app)
 
@@ -49,11 +43,15 @@ def mousePressed(app, event):
 
     if row <= 0 or col <= 0:
         return
-
-    newValue = app.getUserInput("Enter new cell value:")
+    print(repr(app.spreadsheet.get(Reference(col - 1, row)).getRaw()))
+    # don't subtract 1 from row because the row is 1 indexed for references
+    newValue = app.getUserInput("Change value from '" + app.spreadsheet.get(Reference(col - 1, row)).getRaw() + "' to:")
     if newValue == None:
+        # cancelled
+        cell = app.spreadsheet.get(Reference(col - 1, row))
+        print(cell.dependents, cell.dependencies)
         return
-    app.data[row - 1][col - 1].text = newValue
+    app.spreadsheet.setValue(Reference(col - 1, row), newValue)
 
 def keyPressed(app, event):
     pass
@@ -124,15 +122,15 @@ def redrawAll(app, canvas):
                                    text=int(row),
                                    anchor="c")
             else:
-                cell = app.data[row - 1][col - 1]
+                cell = app.spreadsheet.get(Reference(col - 1, row))
 
                 if cell.isNumber:
                     canvas.create_text(x1 - cellMargin, yAvg,
-                                            text=cell.text,
+                                            text=cell.get(),
                                             anchor="e")
                 else:
                     canvas.create_text(x0 + cellMargin, yAvg,
-                                           text=cell.text,
+                                           text=cell.get(),
                                            anchor="w")
 def main():
     runApp(width=800, height=500)
