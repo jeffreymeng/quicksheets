@@ -1,6 +1,14 @@
 # Feature Tracker
 
+**Done**
+
+- Basic UI
+- Circular Reference Detection (#CIR_REF)
+- Error handling (#ERROR)
+- Only update what needs to be updated. e.g. don't reevaluate cells that don't need re-evaluation, but do reevaluate them when the value of a referenced cell changes
 - Some Formulas
+    - Basic Math Operators: `+` `-` `*` `/` `^`
+    - Parenthetical Expressions: `(` expression `)`
     - SUM(values...) Returns the sum
     - MIN(values...) Returns the lowest number
     - MAX(values...) Returns the highest number
