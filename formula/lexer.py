@@ -1,5 +1,6 @@
 import string
 
+
 class Range(object):
     def __init__(self, col1, row1, col2, row2):
         self.col1 = col1
@@ -17,7 +18,6 @@ class Range(object):
 
 
 
-
 class Token(object):
     types = ["number", "operator", "function", "control", "range", "string"]
     def __init__(self, type, symbol, startPosition, endPosition):
@@ -28,9 +28,18 @@ class Token(object):
         self.endPosition = endPosition
         self.symbol = symbol
 
+    # check if the token matches the given symbol and type
+    def matches(self, type, symbol):
+        return self.type == type and self.symbol == symbol
+
     def __eq__(self, other):
-        return isinstance(other, Token) and self.type == other.type \
-               and self.pos == other.pos and self.symbol == other.symbol
+
+        return isinstance(other, Token) and \
+               self.type == other.type and \
+               self.symbol == other.symbol and \
+               self.startPosition == other.startPosition and \
+               self.endPosition == other.endPosition
+
 
     def __repr__(self):
         return f'Token<{self.type}>({repr(self.symbol)})'
@@ -68,6 +77,12 @@ def prefixWhile(s, predicate):
         else:
             break
     return buffer
+
+class LexerError(Exception):
+    def __init__(self, msg, position):
+        super().__init__(msg)
+        self.position = position
+
 
 # a basic lexer
 # Some resources I looked at:
@@ -110,7 +125,7 @@ def lex(str):
             # if row1 is not empty, then this is a valid range
 
             if row1 != "":
-                if str[nextStartPos] != ":":
+                if nextStartPos >= len(str) or str[nextStartPos] != ":":
                     yield Token("range", Range(col1, int(row1), col1, int(row1)), pos, nextStartPos - 1)
                     pos = nextStartPos
                     continue
@@ -121,7 +136,7 @@ def lex(str):
                     row2 = whitelistedPrefix(str[nextStartPos:], string.digits)
                     nextStartPos = nextStartPos + len(row2)
                     if col2 == row2 == "":
-                        raise Exception("Expected reference after ':'")
+                        raise LexerError("Expected reference after ':'", nextStartPos - 1)
                     if col2 == "":
                         col2 = col1
                     if row2 == "":
@@ -133,7 +148,7 @@ def lex(str):
         if c in "\'\"":
             quoteType = c
             if quoteType not in str[pos + 1:]:
-                raise Exception("Expected string to be closed")
+                raise LexerError("Expected string to be closed", pos)
             buffer = prefixWhile(str[pos + 1:], lambda ch: ch != quoteType)
 
             firstCharInString = pos + 1
@@ -158,7 +173,7 @@ def lex(str):
         if c in string.whitespace:
             pos += 1
             continue
-        raise Exception("Unexpected character: " + repr(c))
+        raise LexerError("Unexpected character: " + repr(c), pos)
     pass
 
 
