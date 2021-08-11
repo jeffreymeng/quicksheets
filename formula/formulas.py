@@ -144,21 +144,21 @@ def NTHPRIME(n):
         if isPrime(canidate):
             found += 1
     return canidate
-
+formulae = {
+    "SUM": SUM,
+    "MIN": MIN,
+    "MAX": MAX,
+    "AVERAGE": AVERAGE,
+    "MEDIAN": MEDIAN,
+    "COUNT": COUNT,
+    "COUNTA": COUNTA,
+    "COUNTIF": COUNTIF,
+    "SUMIF": SUMIF,
+    "NTHPRIME": NTHPRIME
+}
 def runFunction(token, arguments):
     name = token.symbol
-    functions = {
-        "SUM": SUM,
-        "MIN": MIN,
-        "MAX": MAX,
-        "AVERAGE": AVERAGE,
-        "MEDIAN": MEDIAN,
-        "COUNT": COUNT,
-        "COUNTA": COUNTA,
-        "COUNTIF": COUNTIF,
-        "SUMIF": SUMIF,
-        "NTHPRIME": NTHPRIME
-    }
-    if name not in functions:
+
+    if name not in formulae:
         raise FormulaNameError("", token)
-    return functions[name](*arguments)
+    return formulae[name](*arguments)

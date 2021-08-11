@@ -18,6 +18,8 @@ def parseCSV(text, spreadsheet):
 class Spreadsheet(object):
     def __init__(self, rows, cols, data = ""):
         self.data = parseCSV(data, self)
+        self.rows = rows
+        self.cols = cols
         for i in range(len(self.data), rows):
             self.data.append([])
 
