@@ -1,6 +1,14 @@
 # Feature Tracker
 
+**Done**
+
+- Basic UI
+- Circular Reference Detection (#CIR_REF)
+- Error handling (#ERROR)
+- Only update what needs to be updated. e.g. don't reevaluate cells that don't need re-evaluation, but do reevaluate them when the value of a referenced cell changes
 - Some Formulas
+    - Basic Math Operators: `+` `-` `*` `/` `^`
+    - Parenthetical Expressions: `(` expression `)`
     - SUM(values...) Returns the sum
     - MIN(values...) Returns the lowest number
     - MAX(values...) Returns the highest number
@@ -15,4 +23,4 @@
         `>=`, `<=`, `>`, `<`, or `=` to check the number against.
     - SUMIF(range, criterion) Returns the sum of all cells that would have been
       counted if COUNTIF(range, criterion) was called.
-    - NTHPRIME(n) Returns the nth prime. The 0th prime is 2, the 1st prime is 3, etc.
+    - NTHPRIME(n) Returns the nth prime. The 0th prime is 2, the 1st prime is 3, etc. The practical use of this is pretty low, but the function is pretty slow for n > 10\*\*4 so it can be used to test if the lazy evaluation works.
