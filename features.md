@@ -23,4 +23,4 @@
         `>=`, `<=`, `>`, `<`, or `=` to check the number against.
     - SUMIF(range, criterion) Returns the sum of all cells that would have been
       counted if COUNTIF(range, criterion) was called.
-    - NTHPRIME(n) Returns the nth prime. The 0th prime is 2, the 1st prime is 3, etc.
+    - NTHPRIME(n) Returns the nth prime. The 0th prime is 2, the 1st prime is 3, etc. The practical use of this is pretty low, but the function is pretty slow for n > 10\*\*4 so it can be used to test if the lazy evaluation works.
