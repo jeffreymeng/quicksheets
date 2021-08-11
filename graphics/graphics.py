@@ -1,4 +1,4 @@
-from cmu_112_graphics import *
+from graphics.cmu_112_graphics import *
 from spreadsheet.spreadsheet import Spreadsheet
 from spreadsheet.range import Reference
 
