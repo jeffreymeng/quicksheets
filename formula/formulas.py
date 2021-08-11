@@ -117,7 +117,7 @@ def countOrSumIf(values, criterion, mode):
                     res += value if value < criterionValue else 0
                 elif criterion[0] in string.digits:
                     res += value if str(value) == criterion else 0
-        elif mode == "sum":
+        elif mode == "count":
             res += 1 if value == criterion else 0
     return res
 

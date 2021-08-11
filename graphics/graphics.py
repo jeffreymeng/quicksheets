@@ -2,11 +2,14 @@ from graphics.cmu_112_graphics import *
 from spreadsheet.spreadsheet import Spreadsheet
 from spreadsheet.range import Reference
 
+
 """
 TODO: 
-Dragging
-Copy/Paste? and change cells
-undo/redo?
+Text entry
+drag and drop
+syntax highlighting
+laoding saving data
+clipboard
 """
 
 def initCellDimensions(app):
@@ -15,6 +18,15 @@ def initCellDimensions(app):
     headerWidth = 25
     app.rowHeights = [headerHeight] + [(app.height - 2 * margin - headerHeight) // rows] * rows
     app.colWidths = [headerWidth] + [(app.width - 2 * margin - headerWidth) // cols] * cols
+
+# readFile and writeFile from https://www.cs.cmu.edu/~112/notes/notes-strings.html#basicFileIO
+def readFile(path):
+    with open(path, "rt") as f:
+        return f.read()
+
+def writeFile(path, contents):
+    with open(path, "wt") as f:
+        f.write(contents)
 
 
 def appStarted(app):
@@ -28,12 +40,14 @@ def appStarted(app):
 # 3,5,71,4
 # hello,goodbye,,
 #     """)
+
     app.spreadsheet = Spreadsheet(app.rows, app.cols,
-"""1,2,3,4,5
-2,4,6,8,10
-3,6,9,12,15
-4,8,12,16,20
-5,10,15,20,25
+"""1,2,3,4,5,,Rob
+2,4,6,8,10,,David
+3,6,9,12,15,,David
+4,8,12,16,20,,Rob
+5,10,15,20,25,,Rob
+,,,,,,John
 """ )
 def sizeChanged(app):
     initCellDimensions(app)
@@ -132,6 +146,9 @@ def redrawAll(app, canvas):
                     canvas.create_text(x0 + cellMargin, yAvg,
                                            text=cell.get(),
                                            anchor="w")
+    ovalId = canvas.create_oval(100,100,200,200,fill="red")
+    canvas.delete(ovalId)
+    
 def main():
     runApp(width=800, height=500)
 
