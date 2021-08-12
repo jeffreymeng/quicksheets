@@ -2,7 +2,7 @@ import string
 
 class FormulaNameError(Exception):
     def __init__(self, msg, token):
-        super().__init__(self, msg)
+        super().__init__(msg)
         self.token = token
 
     def __repr__(self):
@@ -20,29 +20,39 @@ def flat(arr):
 
 def flattenArgs(func):
     def wrapper(*args):
-        print(flat(args))
         return func(*flat(args))
 
     return wrapper
 
+def ignoreEmptyStringArgs(func):
+    def wrapper(*args):
+        return func(*filter(lambda e: not isinstance(e, str) or e.strip() != "", args))
+    return wrapper
+
+
 @flattenArgs
+@ignoreEmptyStringArgs
 def SUM(*args):
     return sum(flat(args))
 
 @flattenArgs
+@ignoreEmptyStringArgs
 def MAX(*args):
     return max(args)
 
 @flattenArgs
+@ignoreEmptyStringArgs
 def MIN(*args):
     return min(args)
 
 @flattenArgs
+@ignoreEmptyStringArgs
 def AVERAGE(*args):
     print(repr(args))
     return sum(args) / len(args)
 
 @flattenArgs
+@ignoreEmptyStringArgs
 def MEDIAN(*args):
     sortedArgs = sorted(args)
     if len(sortedArgs) % 2 == 0:
@@ -160,5 +170,5 @@ def runFunction(token, arguments):
     name = token.symbol
 
     if name not in formulae:
-        raise FormulaNameError("", token)
+        raise FormulaNameError(f'NameError: Function not found: {token.symbol}', token)
     return formulae[name](*arguments)

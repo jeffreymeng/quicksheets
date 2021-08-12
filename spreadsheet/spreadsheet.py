@@ -1,5 +1,6 @@
 from spreadsheet.cell import Cell
 from spreadsheet.range import Range, Reference
+from formula.parser import SpreadsheetReferenceError
 
 def parseCSV(text, spreadsheet):
     arr = []
@@ -33,17 +34,24 @@ class Spreadsheet(object):
         return self.get(ref).get()
 
     def get(self, refOrRange):
+
         if isinstance(refOrRange, Reference):
             ref = refOrRange
+            if not (0 <= ref.row - 1 < self.rows and 0 <= ref.col < self.cols):
+                raise SpreadsheetReferenceError(f"Reference not in spreadsheet: {Reference.colStr(ref.col)}{ref.row}")
             return self.data[ref.row - 1][ref.col]
         elif isinstance(refOrRange, Range):
             givenRange = refOrRange
             res = []
+            if not (0 <= givenRange.fromRef.row - 1 < self.rows and 0 <= givenRange.fromRef.col < self.cols \
+                    and 0 <= givenRange.toRef.row - 1 < self.rows and 0 <= givenRange.toRef.col < self.cols):
+                raise SpreadsheetReferenceError(f"Range not in spreadsheet: {Reference.colStr(givenRange.fromRef.col)}" \
+                   + f"{givenRange.fromRef.row}:{Reference.colStr(givenRange.toRef.col)}{givenRange.toRef.row}")
             for row in range(givenRange.fromRef.row, givenRange.toRef.row + 1):
                 res = res + self.data[row - 1][givenRange.fromRef.col:givenRange.toRef.col + 1]
             return res
         else:
-            raise Exception("Spreadsheet.get expected a Reference or Range, got " + repr(refOrRange))
+            raise SpreadsheetReferenceError("Spreadsheet.get expected a Reference or Range, got " + repr(refOrRange))
 
     def setValue(self, ref, val):
         return self.data[ref.row - 1][ref.col].set(val)

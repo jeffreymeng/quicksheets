@@ -1,11 +1,21 @@
 import string
 from spreadsheet.range import Range, Reference
 
+tokenColors = {
+    "number": "blue",
+    "operator": "red3",
+    "function": "purple",
+    "control": "black",
+    "range": "orange",
+    "string": "goldenrod3",
+    "reference": "orange"
+}
+
 class Token(object):
     types = ["number", "operator", "function", "control", "range", "string", "reference"]
     def __init__(self, type, symbol, startPosition, endPosition):
         if type not in Token.types:
-            raise Exception("Unknown Token type: " + type)
+            raise LexerError("Unknown Token type: " + type, startPosition)
         self.type = type
         self.startPosition = startPosition
         self.endPosition = endPosition
@@ -66,6 +76,8 @@ class LexerError(Exception):
         super().__init__(msg)
         self.position = position
 
+    def __repr__(self):
+        return "SyntaxError: " + str(super())
 
 # a basic lexer
 # Some resources I looked at:
@@ -83,11 +95,15 @@ def lex(str):
             pos += 1
             continue
 
-        if c in string.digits:
+        if c in "." + string.digits:
 
-            buffer = whitelistedPrefix(str[pos:], string.digits)
+            buffer = whitelistedPrefix(str[pos:], string.digits + '.')
             endPosition = pos - 1 + len(buffer)
-            yield Token("number", int(buffer), pos, endPosition)
+            if buffer.count(".") > 1:
+                raise LexerError("Expected zero or one decimal point in the number.", pos)
+            elif len(buffer) > 0 and buffer[-1] == ".":
+                buffer += "0"
+            yield Token("number", float(buffer), pos, endPosition + 1)
 
             # set the position to the character after the number
             pos = endPosition + 1
@@ -109,7 +125,7 @@ def lex(str):
 
             if row1 != "":
                 if nextStartPos >= len(str) or str[nextStartPos] != ":":
-                    yield Token("reference", Reference(col1, int(row1)), pos, nextStartPos - 1)
+                    yield Token("reference", Reference(col1, int(row1)), pos, nextStartPos)
                     pos = nextStartPos
                     continue
                 else:
@@ -119,12 +135,12 @@ def lex(str):
                     row2 = whitelistedPrefix(str[nextStartPos:], string.digits)
                     nextStartPos = nextStartPos + len(row2)
                     if col2 == row2 == "":
-                        raise LexerError("Expected reference after ':'", nextStartPos - 1)
+                        raise LexerError("Expected reference after ':'", nextStartPos)
                     if col2 == "":
                         col2 = -1
                     if row2 == "":
                         row2 = -1
-                    yield Token("range", Range(Reference(col1, int(row1)), Reference(col2, int(row2))), pos, nextStartPos - 1)
+                    yield Token("range", Range(Reference(col1, int(row1)), Reference(col2, int(row2))), pos, nextStartPos)
                     pos = nextStartPos
                     continue
         # strings
@@ -138,7 +154,7 @@ def lex(str):
             lastCharInString = firstCharInString - 1 + len(buffer)
             # add 1 for the ending quote
             endPosition = lastCharInString + 1
-            yield Token("string", buffer, pos, endPosition)
+            yield Token("string", buffer, pos, endPosition + 1)
 
             pos = endPosition + 1
             continue
@@ -147,7 +163,7 @@ def lex(str):
         if c in "_" + string.ascii_letters:
             buffer = whitelistedPrefix(str[pos:], "_" + string.ascii_letters)
             endPosition = pos - 1 + len(buffer)
-            yield Token("function", buffer, pos, endPosition)
+            yield Token("function", buffer, pos, endPosition + 1)
 
             # set the position to the character after the number
             pos = endPosition + 1
@@ -215,16 +231,16 @@ def testLexer():
     test(test2ResWeirdWhitespace, test2Expected)
     test3Res = list(lex("128 + SUM(A1:B2) - 2 * 7 / VALUE('72')"))
     test3ResNoWhitespace = list(lex("128+SUM(A1:B2)-2*7/VALUE('72')"))
-    test3Expected = [("number", 128),
+    test3Expected = [("number", 128.0),
                      ("operator", "+"),
                      ("function", "SUM"),
                      ("control", "("),
                      ("range", Range(Reference("A1"), Reference("B2"))),
                      ("control", ")"),
                      ("operator", "-"),
-                     ("number", 2),
+                     ("number", 2.0),
                      ("operator", "*"),
-                     ("number", 7),
+                     ("number", 7.0),
                      ("operator", "/"),
                      ("function", "VALUE"),
                      ("control", "("),

@@ -1,8 +1,9 @@
 from graphics.cmu_112_graphics import *
 from spreadsheet.spreadsheet import Spreadsheet
 from spreadsheet.range import Reference
-
-
+from formula.lexer import lex, tokenColors, LexerError
+from formula.formulae import formulae, FormulaNameError
+from formula.parser import Parser, ParserSyntaxError, SpreadsheetReferenceError
 """
 TODO: 
 Text entry
@@ -31,6 +32,8 @@ def writeFile(path, contents):
 
 
 def appStarted(app):
+    app.cellMargin = 5
+
     app.rows = 20
     app.cols = 10
     #               Top Bottom Left Right
@@ -53,8 +56,13 @@ def appStarted(app):
 """ )
 
     app.value = ""
-    app.focusX = -1
-    app.focusY = -1
+    app.highlightedValue = highlight(app.value)
+    app.focusCol = -1
+    app.focusRow = -1
+
+    app.frameRate = 20
+    app.timerDelay = 1000 // app.frameRate
+    app.timeSinceLastKey = 0
 
 def sizeChanged(app):
     initCellDimensions(app)
@@ -64,11 +72,15 @@ def mousePressed(app, event):
 
     if row <= 0 or col <= 0:
         return
+
+    # save previously focused cell
+    app.spreadsheet.setValue(Reference(app.focusCol - 1, app.focusRow), app.value)
+
     currentValue = app.spreadsheet.get(Reference(col - 1, row)).getRaw()
     app.value = currentValue
-    print(repr(app.spreadsheet.get(Reference(col - 1, row)).getRaw()))
-    app.focusX = col
-    app.focusY = row
+    app.highlightedValue = highlight(app.value)
+    app.focusCol = col
+    app.focusRow = row
     # don't subtract 1 from row because the row is 1 indexed for references
     # newValue = app.getUserInput("Change value from '" + app.spreadsheet.get(Reference(col - 1, row)).getRaw() + "' to:")
     # if newValue == None:
@@ -78,14 +90,30 @@ def mousePressed(app, event):
     #     return
     # app.spreadsheet.setValue(Reference(col - 1, row), newValue)
 
+
+def createMulticolorText(canvas, x, y, text, **kwargs):
+    currentX = x
+    for (partValue, partColor) in text:
+        textId = canvas.create_text(currentX, y, text=partValue, fill=partColor, anchor="w", **kwargs)
+        x0, y0, x1, y1 = canvas.bbox(textId)
+
+        currentX = x1 - 2
+
 def keyPressed(app, event):
+    app.timeSinceLastKey = 0
     if len(event.key) == 1:
         app.value = app.value + event.key
+        app.highlightedValue = highlight(app.value)
+    elif event.key == "Space":
+        app.value = app.value + " "
+        app.highlightedValue = highlight(app.value)
     elif event.key == "Delete":
         app.value = app.value[:-1]
+        app.highlightedValue = highlight(app.value)
     elif event.key in ["Enter", "Tab", "Up", "Down", "Right", "Left"]:
         dy = 0
         dx = 0
+        app.spreadsheet.setValue(Reference(app.focusCol - 1, app.focusRow), app.value)
         # TODO: implement
         shiftKey = False
         if (event.key == "Enter" and shiftKey) or event.key == "Up":
@@ -95,20 +123,43 @@ def keyPressed(app, event):
         elif (event.key == "Tab" and shiftKey) or event.key == "Left":
             dx = -1
         elif (event.key == "Tab" and not shiftKey) or event.key == "Right":
-            dy = 1
-        app.spreadsheet.setValue(Reference(app.focusX - 1, app.focusY), app.value)
-        app.value = ""
-        if 1 < app.focusX + dx < app.spreadsheet.cols + 1 and \
-                1 < app.focusY + dy < app.spreadsheet.rows + 1:
+            dx = 1
 
-            app.focusX += dx
-            app.focusY += dy
-            app.value = app.spreadsheet.get(Reference(app.focusX - 1, app.focusY)).getRaw()
+        if 1 <= app.focusCol + dx <= app.spreadsheet.cols and \
+                1 <= app.focusRow + dy <= app.spreadsheet.rows:
+
+            app.value = ""
+            app.highlightedValue = highlight(app.value)
+            app.focusCol += dx
+            app.focusRow += dy
+            app.value = app.spreadsheet.get(Reference(app.focusCol - 1, app.focusRow)).getRaw()
+            app.highlightedValue = highlight(app.value)
     else:
         print(event.key)
 
+def highlight(text):
+    if len(text) == 0 or text[0] != "=":
+        return [(text, "black")]
+    text = text[1:]
+    res = [("=", "black")]
+    currentIndex = 0
+    try:
+        for token in lex(text):
+            start = token.startPosition
+            end = token.endPosition
+            if start > currentIndex:
+                res.append((text[currentIndex:start], "black"))
+            color = tokenColors[token.type]
+            if token.type == "function" and token.symbol not in formulae:
+                color = "black"
+            res.append((text[start:end], color))
+            currentIndex = end
+    except LexerError as e:
+        res.append((text[currentIndex:], "black"))
+    return res
+
 def timerFired(app):
-    pass
+    app.timeSinceLastKey += (1000 // app.frameRate)
 
 
 # getCell adapted from the grid animation notes
@@ -151,13 +202,12 @@ def getCellBounds(app, row, col):
             margins[0] + sum(rowHeights[:row + 1]))
 
 def drawCells(app, canvas):
-    cellMargin = 5
-
+    cellMargin = app.cellMargin
     for row in range(app.rows + 1):
         for col in range(app.cols + 1):
 
             rectangleKwargs = dict()
-            if app.focusX == col and app.focusY == row:
+            if app.focusCol == col and app.focusRow == row:
                 rectangleKwargs = {
                     "outline": "blue",
                     "width": 3
@@ -184,20 +234,37 @@ def drawCells(app, canvas):
 
                 if cell.isNumber:
                     canvas.create_text(x1 - cellMargin, yAvg,
-                                       text=cell.get(),
+                                       text=cell.getRounded(),
                                        anchor="e")
                 else:
                     canvas.create_text(x0 + cellMargin, yAvg,
-                                       text=cell.get(),
+                                       text=cell.getRounded(),
                                        anchor="w")
+
 def drawInputBox(app, canvas):
     inputMargin = 5
     marginTop, marginBottom, marginLeft, marginRight = app.margins
-    canvas.create_text(marginLeft + inputMargin, (marginTop // 2), text = app.value, anchor="w")
+    # canvas.create_text(marginLeft + inputMargin, (marginTop // 2), text = app.value, anchor="w")
+    createMulticolorText(canvas, marginLeft + inputMargin, (marginTop // 2), app.highlightedValue)
+
     # TODO: figure out why the -5 is needed for x1
+    x0, y0, x1, y1 = marginLeft, 10, app.width - marginRight - 5, marginTop - 10
+    canvas.create_rectangle(x0, y0, x1, y1)
+    if app.focusCol <= 0 and app.focusRow <= 0:
+        return
+    cell = app.spreadsheet.get(Reference(app.focusCol - 1, app.focusRow))
 
-    canvas.create_rectangle(marginLeft, 10, app.width - marginRight - 5, marginTop - 10)
-
+    if app.value != "" and app.value[0] == "=":
+        try:
+            res = Parser(lex(app.value[1:]), app.spreadsheet).getExpression().eval()
+            canvas.create_text(x1 - app.cellMargin, (y0 + y1) // 2,
+                               text=f'= {res}',
+                               anchor="e", fill="black")
+        except Exception as e:
+            if cell.getRaw() == app.value or app.timeSinceLastKey >= 1000:
+                canvas.create_text(x1 - app.cellMargin, (y0 + y1) // 2,
+                           text=str(e),
+                           anchor="e", fill="red")
 
 def redrawAll(app, canvas):
     drawInputBox(app, canvas)

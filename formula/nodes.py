@@ -1,4 +1,4 @@
-from formula.formulas import runFunction
+from formula.formulae import runFunction
 
 class ASTNode(object):
     def __init__(self, token):
@@ -52,11 +52,23 @@ class ExponentNode(BinaryOpNode):
 
 class AddNode(BinaryOpNode):
     def eval(self):
-        return self.left.eval() + self.right.eval()
+        left = self.left.eval()
+        right = self.right.eval()
+        if not isinstance(left, str) and isinstance(right, str) and right.strip() == "":
+            return left
+        elif not isinstance(right, str) and isinstance(left, str) and left.strip() == "":
+            return right
+        return left + right
 
 class SubtractNode(BinaryOpNode):
     def eval(self):
-        return self.left.eval() - self.right.eval()
+        left = self.left.eval()
+        right = self.right.eval()
+        if not isinstance(left, str) and isinstance(right, str) and right.strip() == "":
+            return left
+        elif not isinstance(right, str) and isinstance(left, str) and left.strip() == "":
+            return right
+        return left - right
 
 class MultiplyNode(BinaryOpNode):
     def eval(self):
@@ -72,7 +84,6 @@ class RefNode(ASTNode):
         self.spreadsheet = spreadsheet
 
     def eval(self):
-        print("GET123", self.token, self.spreadsheet.get(self.token.symbol))
         return self.spreadsheet.get(self.token.symbol).getConverted()
 
 class RangeNode(ASTNode):

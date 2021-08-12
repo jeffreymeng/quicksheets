@@ -1,24 +1,22 @@
 from formula.lexer import lex, LexerError
-from formula.formulas import FormulaNameError
+from formula.formulae import FormulaNameError
 from formula.nodes import *
 
 class ParserSyntaxError(Exception):
     def __init__(self, msg, token = None):
-        super().__init__(self, msg)
-        self.msg = msg
+        super().__init__(msg)
         self.token = token
 
     def __repr__(self):
-        return "Error: " + self.msg
+        return "SyntaxError: " + str(super())
 
 class SpreadsheetReferenceError(ParserSyntaxError):
     def __init__(self, msg, token = None):
-        super().__init__(self, msg)
-        self.msg = msg
+        super().__init__(msg)
         self.token = token
 
     def __repr__(self):
-        return "ReferenceError: " + self.msg
+        return "ReferenceError: " + str(super())
 
 # https://ruslanspivak.com/lsbasi-part7/
 # https://ruslanspivak.com/lsbasi-part8/
