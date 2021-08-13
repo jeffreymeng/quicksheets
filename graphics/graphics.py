@@ -1,3 +1,4 @@
+from tkinter import filedialog, Menu
 from graphics.cmu_112_graphics import *
 from spreadsheet.spreadsheet import Spreadsheet
 from spreadsheet.range import Reference
@@ -6,12 +7,13 @@ from formula.formulae import formulae, FormulaNameError
 from formula.parser import Parser, ParserSyntaxError, SpreadsheetReferenceError
 """
 TODO: 
-Text entry
 drag and drop
-syntax highlighting
-laoding saving data
+loading saving data
 clipboard
+cursor
 """
+
+dataPath = None
 
 def initCellDimensions(app):
     rows, cols = app.rows, app.cols
@@ -32,6 +34,8 @@ def writeFile(path, contents):
 
 
 def appStarted(app):
+
+
     app.cellMargin = 5
 
     app.rows = 20
@@ -45,15 +49,12 @@ def appStarted(app):
 # 3,5,71,4
 # hello,goodbye,,
 #     """)
+    if dataPath == None:
+        data = ""
+    else:
+        data = readFile(dataPath)
 
-    app.spreadsheet = Spreadsheet(app.rows, app.cols,
-"""1,2,3,4,5,,Rob
-2,4,6,8,10,,David
-3,6,9,12,15,,David
-4,8,12,16,20,,Rob
-5,10,15,20,25,,Rob
-,,,,,,John
-""" )
+    app.spreadsheet = Spreadsheet(app.rows, app.cols, data)
 
     app.value = ""
     app.highlightedValue = highlight(app.value)
@@ -101,7 +102,10 @@ def createMulticolorText(canvas, x, y, text, **kwargs):
 
 def keyPressed(app, event):
     app.timeSinceLastKey = 0
+    print(event)
     if len(event.key) == 1:
+        # if event.key == "!":
+        #     print(filedialog.asksaveasfilename(initialdir=os.getcwd()))
         app.value = app.value + event.key
         app.highlightedValue = highlight(app.value)
     elif event.key == "Space":
@@ -134,6 +138,7 @@ def keyPressed(app, event):
             app.focusRow += dy
             app.value = app.spreadsheet.get(Reference(app.focusCol - 1, app.focusRow)).getRaw()
             app.highlightedValue = highlight(app.value)
+   
     else:
         print(event.key)
 
@@ -267,12 +272,15 @@ def drawInputBox(app, canvas):
                            anchor="e", fill="red")
 
 def redrawAll(app, canvas):
+
     drawInputBox(app, canvas)
     drawCells(app, canvas)
     # ovalId = canvas.create_oval(100,100,200,200,fill="red")
     # canvas.delete(ovalId)
     
-def main():
+def main(filename = None):
+    global dataPath
+    dataPath = filename
     runApp(width=800, height=500)
 
 

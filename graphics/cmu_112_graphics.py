@@ -69,7 +69,7 @@ LAST_UPDATED  = datetime.date(year=2021, month=4, day=12)
 #   * changed sizeChanged to not take event (use app.width and app.height)
 
 # Changes in v0.7.2
-#   * Singleton App._theRoot instance (hopefully fixes all those pesky Tkinter errors-on-exit)
+#   * Singleton App._theRoot_theRoot instance (hopefully fixes all those pesky Tkinter errors-on-exit)
 #   * Use user32.SetProcessDPIAware to get resolution of screen grabs right on Windows-only (fine on Macs)
 #   * Replaces showGraphics() with runApp(...), which is a veneer for App(...) [more intuitive for pre-OOP part of course]
 #   * Fixes/updates images:
