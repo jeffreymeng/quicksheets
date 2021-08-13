@@ -29,30 +29,34 @@ def ignoreEmptyStringArgs(func):
         return func(*filter(lambda e: not isinstance(e, str) or e.strip() != "", args))
     return wrapper
 
+def numericArgsOnly(func):
+    def wrapper(*args):
+        return func(*filter(lambda e: not isinstance(e, str), args))
+    return wrapper
 
 @flattenArgs
-@ignoreEmptyStringArgs
+@numericArgsOnly
 def SUM(*args):
     return sum(flat(args))
 
 @flattenArgs
-@ignoreEmptyStringArgs
+@numericArgsOnly
 def MAX(*args):
     return max(args)
 
 @flattenArgs
-@ignoreEmptyStringArgs
+@numericArgsOnly
 def MIN(*args):
     return min(args)
 
 @flattenArgs
-@ignoreEmptyStringArgs
+@numericArgsOnly
 def AVERAGE(*args):
     print(repr(args))
     return sum(args) / len(args)
 
 @flattenArgs
-@ignoreEmptyStringArgs
+@numericArgsOnly
 def MEDIAN(*args):
     sortedArgs = sorted(args)
     if len(sortedArgs) % 2 == 0:
@@ -66,7 +70,7 @@ def MEDIAN(*args):
 def COUNT(*args):
     count = 0
     for arg in args:
-        if isinstance(arg, int):
+        if isinstance(arg, int) or isinstance(arg, float):
             count += 1
     return count
 
@@ -79,10 +83,21 @@ def COUNTA(*args):
     return count
 
 def COUNTIF(values, criterion):
-    countOrSumIf(values, criterion, "count")
+    return countOrSumIf(values, criterion, "count")
+
+@flattenArgs
+@ignoreEmptyStringArgs
+def COUNTUNIQUE(*args):
+    S = set()
+    for arg in args:
+        S.add(arg)
+    print(S)
+    return len(S)
 
 def SUMIF(values, criterion):
-    countOrSumIf(values, criterion, "sum")
+    return countOrSumIf(values, criterion, "sum")
+
+
 
 def countOrSumIf(values, criterion, mode):
     if not isinstance(values, list) and not isinstance(values, tuple):
@@ -91,15 +106,15 @@ def countOrSumIf(values, criterion, mode):
     buffer = ""
     criterionValue = 0
     for c in criterion[::-1]:
-        if c not in string.digits:
+        if c not in string.digits + ".":
             if buffer != "":
-                criterionValue = int(buffer)
+                criterionValue = float(buffer)
             break
         else:
             buffer = c + buffer
-
     for value in values:
-        if isinstance(value, int):
+        if isinstance(value, int) or isinstance(value, float):
+            value = float(value)
             print(repr(value), repr(criterionValue), value >= criterionValue)
             if mode == "count":
                 if criterion[0:2] == ">=":
@@ -112,8 +127,8 @@ def countOrSumIf(values, criterion, mode):
                     res += 1 if value > criterionValue else 0
                 elif criterion[0] == "<":
                     res += 1 if value < criterionValue else 0
-                elif criterion[0] in string.digits:
-                    res += 1 if str(value) == criterion else 0
+                elif criterion[0] in string.digits + ".":
+                    res += 1 if value == float(criterion) else 0
             elif mode == "sum":
                 if criterion[0:2] == ">=":
                     res += value if value >= criterionValue else 0
@@ -125,8 +140,8 @@ def countOrSumIf(values, criterion, mode):
                     res += value if value > criterionValue else 0
                 elif criterion[0] == "<":
                     res += value if value < criterionValue else 0
-                elif criterion[0] in string.digits:
-                    res += value if str(value) == criterion else 0
+                elif criterion[0] in string.digits + ".":
+                    res += value if value == float(criterion) else 0
         elif mode == "count":
             res += 1 if value == criterion else 0
     return res
@@ -154,6 +169,7 @@ def NTHPRIME(n):
         if isPrime(canidate):
             found += 1
     return canidate
+
 formulae = {
     "SUM": SUM,
     "MIN": MIN,
@@ -163,6 +179,7 @@ formulae = {
     "COUNT": COUNT,
     "COUNTA": COUNTA,
     "COUNTIF": COUNTIF,
+    "COUNTUNIQUE": COUNTUNIQUE,
     "SUMIF": SUMIF,
     "NTHPRIME": NTHPRIME
 }

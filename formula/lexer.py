@@ -137,9 +137,9 @@ def lex(str):
                     if col2 == row2 == "":
                         raise LexerError("Expected reference after ':'", nextStartPos)
                     if col2 == "":
-                        col2 = -1
+                        col2 = 9
                     if row2 == "":
-                        row2 = -1
+                        row2 = 20
                     yield Token("range", Range(Reference(col1, int(row1)), Reference(col2, int(row2))), pos, nextStartPos)
                     pos = nextStartPos
                     continue

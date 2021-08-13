@@ -1,17 +1,10 @@
-from tkinter import filedialog, Menu
+from tkinter import filedialog, Menu, simpledialog, messagebox
 from graphics.cmu_112_graphics import *
 from spreadsheet.spreadsheet import Spreadsheet
 from spreadsheet.range import Reference
 from formula.lexer import lex, tokenColors, LexerError
 from formula.formulae import formulae, FormulaNameError
 from formula.parser import Parser, ParserSyntaxError, SpreadsheetReferenceError
-"""
-TODO: 
-drag and drop
-loading saving data
-clipboard
-cursor
-"""
 
 dataPath = None
 
@@ -35,24 +28,27 @@ def writeFile(path, contents):
 
 def appStarted(app):
 
+    init(app, dataPath)
 
+
+def init(app, path):
     app.cellMargin = 5
 
     app.rows = 20
     app.cols = 10
-    #               Top Bottom Left Right
-    app.margins = (40, 10, 10, 10)
+
+    #               T   B   L   R (top bottom left right)
+    app.margins = (70, 10, 10, 10)
+
+    app.loadButton = app.margins[2], 10, app.margins[2] + 50, app.margins[0] - 40
+    app.saveButton = app.loadButton[2] + 10, app.loadButton[1], app.loadButton[2] + 60, app.loadButton[3]
+
     initCellDimensions(app)
 
-#     app.spreadsheet = Spreadsheet(app.rows, app.cols, """
-# one,,three,,5,6,7
-# 3,5,71,4
-# hello,goodbye,,
-#     """)
-    if dataPath == None:
+    if path == None:
         data = ""
     else:
-        data = readFile(dataPath)
+        data = readFile(path)
 
     app.spreadsheet = Spreadsheet(app.rows, app.cols, data)
 
@@ -64,11 +60,36 @@ def appStarted(app):
     app.frameRate = 20
     app.timerDelay = 1000 // app.frameRate
     app.timeSinceLastKey = 0
+    app.frame = 0
 
 def sizeChanged(app):
     initCellDimensions(app)
 
 def mousePressed(app, event):
+
+    x0, y0, x1, y1 = app.loadButton
+    if x0 < event.x < x1 and y0 < event.y < y1:
+        loadPath = filedialog.askopenfilename(initialdir=os.getcwd())
+        if loadPath == "":
+            return
+        init(app, loadPath)
+        return
+    x0, y0, x1, y1 = app.saveButton
+    if x0 < event.x < x1 and y0 < event.y < y1:
+        def spreadsheetIsEmpty():
+            for spreadsheetRow in app.spreadsheet.data:
+                for cell in spreadsheetRow:
+                    if cell.getRaw() != "":
+                        return False
+            return True
+        if spreadsheetIsEmpty() and not messagebox.askyesno("Continue?", "You will lose all unsaved changes. Continue?"):
+            return
+        savePath = filedialog.asksaveasfilename(initialdir=os.getcwd(), filetypes= [('CSV','.csv')])
+        if savePath == "":
+            return
+        writeFile(savePath, app.spreadsheet.exportCSV())
+        return
+
     row, col = getCell(app, event.x, event.y)
 
     if row <= 0 or col <= 0:
@@ -102,10 +123,8 @@ def createMulticolorText(canvas, x, y, text, **kwargs):
 
 def keyPressed(app, event):
     app.timeSinceLastKey = 0
-    print(event)
     if len(event.key) == 1:
-        # if event.key == "!":
-        #     print(filedialog.asksaveasfilename(initialdir=os.getcwd()))
+
         app.value = app.value + event.key
         app.highlightedValue = highlight(app.value)
     elif event.key == "Space":
@@ -118,8 +137,7 @@ def keyPressed(app, event):
         dy = 0
         dx = 0
         app.spreadsheet.setValue(Reference(app.focusCol - 1, app.focusRow), app.value)
-        # TODO: implement
-        shiftKey = False
+        shiftKey = False # leaving this in in case I find a way in the future to detect this
         if (event.key == "Enter" and shiftKey) or event.key == "Up":
             dy = -1
         elif (event.key == "Enter" and not shiftKey) or event.key == "Down":
@@ -139,8 +157,8 @@ def keyPressed(app, event):
             app.value = app.spreadsheet.get(Reference(app.focusCol - 1, app.focusRow)).getRaw()
             app.highlightedValue = highlight(app.value)
    
-    else:
-        print(event.key)
+    # else:
+        # print(event.key)
 
 def highlight(text):
     if len(text) == 0 or text[0] != "=":
@@ -165,7 +183,7 @@ def highlight(text):
 
 def timerFired(app):
     app.timeSinceLastKey += (1000 // app.frameRate)
-
+    # app.frame = (app.frame + 1) % 1000000 # mod a million so the number doesn't get too big
 
 # getCell adapted from the grid animation notes
 def getCell(app, x, y):
@@ -173,7 +191,7 @@ def getCell(app, x, y):
     currentTop = app.margins[0]
     for r in range(len(app.rowHeights)):
         currentBottom = currentTop + app.rowHeights[r]
-        if currentBottom > y > currentTop:
+        if currentBottom > y >= currentTop:
             row = r
             break
         currentTop = currentBottom
@@ -182,7 +200,7 @@ def getCell(app, x, y):
     currentLeft = app.margins[2]
     for c in range(len(app.colWidths)):
         currentRight = currentLeft + app.colWidths[c]
-        if currentRight > x > currentLeft:
+        if currentRight > x >= currentLeft:
             col = c
             break
         currentLeft = currentRight
@@ -217,6 +235,10 @@ def drawCells(app, canvas):
                     "outline": "blue",
                     "width": 3
                 }
+            elif (row == 0 and col == app.focusCol) or (col == 0 and row == app.focusRow):
+                rectangleKwargs = {
+                    "fill": "lightgray",
+                }
 
             x0, y0, x1, y1 = getCellBounds(app, row, col)
             yAvg = (y0 + y1) // 2
@@ -246,15 +268,25 @@ def drawCells(app, canvas):
                                        text=cell.getRounded(),
                                        anchor="w")
 
+def drawButtons(app, canvas):
+    marginTop, marginBottom, marginLeft, marginRight = app.margins
+    x0, y0, x1, y1 = app.loadButton
+    canvas.create_rectangle(x0, y0, x1, y1)
+    canvas.create_text((x0 + x1) // 2, (y0 + y1) // 2, text="Load")
+    x02, y02, x12, y12 = app.saveButton
+    canvas.create_rectangle(x02, y02, x12, y12)
+    canvas.create_text((x02 + x12) // 2, (y02 + y12) // 2, text="Save")
+
 def drawInputBox(app, canvas):
     inputMargin = 5
     marginTop, marginBottom, marginLeft, marginRight = app.margins
     # canvas.create_text(marginLeft + inputMargin, (marginTop // 2), text = app.value, anchor="w")
-    createMulticolorText(canvas, marginLeft + inputMargin, (marginTop // 2), app.highlightedValue)
 
-    # TODO: figure out why the -5 is needed for x1
-    x0, y0, x1, y1 = marginLeft, 10, app.width - marginRight - 5, marginTop - 10
+    x0, y0, x1, y1 = marginLeft, 40, marginLeft + sum(app.colWidths), marginTop - 10
     canvas.create_rectangle(x0, y0, x1, y1)
+
+    createMulticolorText(canvas, x0 + inputMargin, ((y0 + y1) // 2), app.highlightedValue)
+
     if app.focusCol <= 0 and app.focusRow <= 0:
         return
     cell = app.spreadsheet.get(Reference(app.focusCol - 1, app.focusRow))
@@ -272,7 +304,7 @@ def drawInputBox(app, canvas):
                            anchor="e", fill="red")
 
 def redrawAll(app, canvas):
-
+    drawButtons(app, canvas)
     drawInputBox(app, canvas)
     drawCells(app, canvas)
     # ovalId = canvas.create_oval(100,100,200,200,fill="red")

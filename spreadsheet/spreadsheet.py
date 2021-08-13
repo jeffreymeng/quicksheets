@@ -28,6 +28,22 @@ class Spreadsheet(object):
             for col in range(len(self.data[row]), cols):
                 self.data[row].append(Cell("", row, col, self))
 
+        # update all formulas now that everything has been loaded
+        for row in self.data:
+            for cell in row:
+                cell.update()
+
+    def exportCSV(self):
+        res = ""
+        for row in self.data:
+            rowCSV = ""
+            for cell in row:
+                if cell.getRaw().count(",") != 0:
+                    rowCSV = rowCSV + '"' + cell.getRaw() + '",'
+                else:
+                    rowCSV = rowCSV + cell.getRaw() + ","
+            res += rowCSV[:-1] + "\n" # cut out last ,
+        return res
     def getValue(self, ref):
         if not isinstance(ref, Reference):
             raise Exception("Spreadsheet getValue expects a reference, but got " + ref)

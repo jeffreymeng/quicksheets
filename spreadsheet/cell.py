@@ -118,13 +118,13 @@ class Cell(object):
 
     # Returns the number rounded to 10 decimal places, which mostly avoids floating point precision errors.
     def getRounded(self):
-        if self.isNumber and self.getConverted() // 1 != self.getConverted():
+        if self.isNumber and not self.error and self.getConverted() // 1 != self.getConverted():
             return str(round(self.getConverted(), 10))
         return self.get()
 
     # returns the computed value of the cell, converted into a number if it is a number
     def getConverted(self):
-        if self.isNumber:
+        if self.isNumber and not self.error:
             return float(self.get())
         else:
             return self.get()
